@@ -394,8 +394,14 @@ function api(params,cb){
   fetch(url).then(function(r){return r.json();}).then(function(d){cb(null,d);}).catch(function(e){cb(e,null);});
 }
 function apiPost(params,cb){
-  fetch(WEBAPP,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(params)})
-    .then(function(r){return r.json();}).then(function(d){cb(null,d);}).catch(function(e){cb(e,null);});
+  // Apps Script 302 redirect drops POST body — use GET with URL params instead
+  var url=WEBAPP+'?'+Object.keys(params).map(function(k){
+    return encodeURIComponent(k)+'='+encodeURIComponent(params[k]||'');
+  }).join('&');
+  fetch(url)
+    .then(function(r){return r.json();})
+    .then(function(d){cb(null,d);})
+    .catch(function(e){cb(e,null);});
 }
 function apiPromise(params){return new Promise(function(resolve){api(params,function(err,d){resolve(d||{ok:false,msg:err?err.message:'Error'});});});}
 function apiPostPromise(params){return new Promise(function(resolve){apiPost(params,function(err,d){resolve(d||{ok:false,msg:err?err.message:'Error'});});});}
