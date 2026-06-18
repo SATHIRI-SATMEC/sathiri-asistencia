@@ -90,15 +90,18 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--pr);cursor:pointe
 .res-card.ok .res-num{color:var(--ok)}.res-card.er .res-num{color:var(--er)}
 .res-card.wn .res-num{color:var(--wn)}.res-card.pu .res-num{color:var(--pu)}
 /* 3-foto grid */
-.foto-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:4px}
-.foto-slot{background:var(--bg);border:2px dashed var(--bd);border-radius:8px;padding:10px;text-align:center;cursor:pointer;transition:all .15s;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
-.foto-slot:hover{border-color:var(--ac)}
+.foto-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px}
+@media(max-width:420px){.foto-grid{grid-template-columns:1fr}}
+.foto-slot{background:var(--bg);border:2px dashed var(--bd);border-radius:8px;padding:8px;text-align:center;transition:all .15s;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
 .foto-slot.tiene-foto{border-style:solid;border-color:var(--ok);background:#f0fff4}
-.foto-slot img{width:100%;max-height:80px;object-fit:cover;border-radius:4px}
-.foto-slot-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.foto-slot img{width:100%;max-height:70px;object-fit:cover;border-radius:4px}
+.foto-slot-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
 .foto-slot.ent .foto-slot-lbl{color:var(--ok)}
 .foto-slot.sal .foto-slot-lbl{color:var(--er)}
 .foto-slot.reg .foto-slot-lbl{color:var(--bl)}
+.foto-btns{display:flex;gap:4px;width:100%;margin-top:2px}
+.fbtn-mini{flex:1;background:#fff;border:1.3px solid var(--bd);border-radius:5px;padding:5px 2px;font-size:9.5px;font-weight:600;color:var(--tx);cursor:pointer}
+.fbtn-mini:active{background:var(--ac);color:#fff}
 .tarde-tag{display:inline-block;background:#fce4ec;color:#b71c1c;font-size:10px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:4px}
 .selall-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;font-weight:600;color:var(--txl)}
 .config-hora{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--txl)}
@@ -167,25 +170,40 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--pr);cursor:pointe
     <!-- FOTOS -->
     <div class="card">
       <div class="ctitle">&#128247; Evidencias fotograficas</div>
-      <!-- 3 hidden file inputs -->
-      <input type="file" id="fi-entrada"  accept="image/*" capture="environment" style="display:none" onchange="onFoto(this,'entrada')">
-      <input type="file" id="fi-salida"   accept="image/*" capture="environment" style="display:none" onchange="onFoto(this,'salida')">
-      <input type="file" id="fi-registro" accept="image/*" capture="environment" style="display:none" onchange="onFoto(this,'registro')">
+      <!-- 3 camara + 3 galeria = 6 hidden file inputs -->
+      <input type="file" id="fi-entrada-cam"  accept="image/*" capture="environment" style="display:none" onchange="onFoto(this,'entrada')">
+      <input type="file" id="fi-entrada-gal"  accept="image/*" style="display:none" onchange="onFoto(this,'entrada')">
+      <input type="file" id="fi-salida-cam"   accept="image/*" capture="environment" style="display:none" onchange="onFoto(this,'salida')">
+      <input type="file" id="fi-salida-gal"   accept="image/*" style="display:none" onchange="onFoto(this,'salida')">
+      <input type="file" id="fi-registro-cam" accept="image/*" capture="environment" style="display:none" onchange="onFoto(this,'registro')">
+      <input type="file" id="fi-registro-gal" accept="image/*" style="display:none" onchange="onFoto(this,'registro')">
       <div class="foto-grid">
-        <div class="foto-slot ent" id="slot-entrada" onclick="document.getElementById('fi-entrada').click()">
+        <div class="foto-slot ent" id="slot-entrada">
           <div class="foto-slot-lbl">&#128994; Foto Entrada</div>
           <div id="prev-entrada" style="width:100%"></div>
-          <div id="st-entrada" style="font-size:10px;color:var(--txl)">Toca para tomar</div>
+          <div id="st-entrada" style="font-size:10px;color:var(--txl)">Sin foto</div>
+          <div class="foto-btns">
+            <button type="button" class="fbtn-mini" onclick="document.getElementById('fi-entrada-cam').click()">&#128247; Camara</button>
+            <button type="button" class="fbtn-mini" onclick="document.getElementById('fi-entrada-gal').click()">&#128193; Galeria</button>
+          </div>
         </div>
-        <div class="foto-slot sal" id="slot-salida" onclick="document.getElementById('fi-salida').click()">
+        <div class="foto-slot sal" id="slot-salida">
           <div class="foto-slot-lbl">&#128308; Foto Salida</div>
           <div id="prev-salida" style="width:100%"></div>
-          <div id="st-salida" style="font-size:10px;color:var(--txl)">Toca para tomar</div>
+          <div id="st-salida" style="font-size:10px;color:var(--txl)">Sin foto</div>
+          <div class="foto-btns">
+            <button type="button" class="fbtn-mini" onclick="document.getElementById('fi-salida-cam').click()">&#128247; Camara</button>
+            <button type="button" class="fbtn-mini" onclick="document.getElementById('fi-salida-gal').click()">&#128193; Galeria</button>
+          </div>
         </div>
-        <div class="foto-slot reg" id="slot-registro" onclick="document.getElementById('fi-registro').click()">
+        <div class="foto-slot reg" id="slot-registro">
           <div class="foto-slot-lbl">&#128309; Foto Registro</div>
           <div id="prev-registro" style="width:100%"></div>
-          <div id="st-registro" style="font-size:10px;color:var(--txl)">Toca para tomar</div>
+          <div id="st-registro" style="font-size:10px;color:var(--txl)">Sin foto</div>
+          <div class="foto-btns">
+            <button type="button" class="fbtn-mini" onclick="document.getElementById('fi-registro-cam').click()">&#128247; Camara</button>
+            <button type="button" class="fbtn-mini" onclick="document.getElementById('fi-registro-gal').click()">&#128193; Galeria</button>
+          </div>
         </div>
       </div>
       <div style="font-size:11px;color:var(--txl);text-align:center">Las fotos se suben automaticamente al guardar</div>
@@ -450,10 +468,35 @@ function subirFoto(tipo,cb){
   var f=state.fotos[tipo];
   if(!f.b64){cb('');return;}
   if(f.url){cb(f.url);return;}
-  apiPost({action:'uploadArchivo',fileName:f.nombre||tipo+'.jpg',mimeType:f.mime||'image/jpeg',data:f.b64},function(err,d){
-    if(d&&d.ok){state.fotos[tipo].url=d.url;cb(d.url);}
-    else cb('');
-  });
+  // Comprimir imagen antes de subir
+  var CHUNK=3500;
+  var img=new Image();
+  img.onload=function(){
+    var canvas=document.createElement('canvas');
+    var maxW=800,maxH=600,w=img.width,h=img.height;
+    if(w>maxW||h>maxH){if(w/maxW>h/maxH){h=Math.round(h*maxW/w);w=maxW;}else{w=Math.round(w*maxH/h);h=maxH;}}
+    canvas.width=w;canvas.height=h;
+    canvas.getContext('2d').drawImage(img,0,0,w,h);
+    var comprimida=canvas.toDataURL('image/jpeg',0.5).split(',')[1];
+    var total=Math.ceil(comprimida.length/CHUNK);
+    var fileKey=tipo+'_'+Date.now();
+    var idx=0;
+    function enviarBloque(){
+      if(idx>=total){
+        api({action:'finalizeUpload',fileKey:fileKey,totalChunks:total,
+             fileName:f.nombre||tipo+'.jpg',mimeType:'image/jpeg',carpeta:'SATHIRI_Fotos'},
+          function(err,d){if(d&&d.ok){state.fotos[tipo].url=d.url;cb(d.url);}else cb('');});
+        return;
+      }
+      var chunk=comprimida.substring(idx*CHUNK,(idx+1)*CHUNK);
+      api({action:'uploadChunk',fileKey:fileKey,chunkIndex:idx,data:chunk},function(err,d){
+        if(d&&d.ok){idx++;enviarBloque();}else cb('');
+      });
+    }
+    enviarBloque();
+  };
+  img.onerror=function(){cb('');};
+  img.src='data:'+(f.mime||'image/jpeg')+';base64,'+f.b64;
 }
 
 // RENDER WORKERS
