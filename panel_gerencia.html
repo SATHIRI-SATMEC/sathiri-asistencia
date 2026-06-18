@@ -622,8 +622,11 @@ function renderPaginaDia(doc,diaData,numPag,totalPag){
   doc.setTextColor(42,20,7);doc.setFontSize(9);doc.setFont('helvetica','bold');
   doc.text('Fecha: '+fmtF(fecha),M,y);doc.text('Supervisor: '+(r0.Supervisor||''),M+70,y);
   y+=6;
-  doc.text('Proyecto: ',M,y);doc.setFont('helvetica','normal');doc.text((r0.Proyecto||''),M+20,y);
-  doc.setFont('helvetica','bold');doc.text('Lugar: ',M+70,y);doc.setFont('helvetica','normal');doc.text((r0.Lugar||''),M+83,y);
+  doc.setFont('helvetica','bold');doc.text('Proyecto:',M,y);
+  doc.setFont('helvetica','normal');doc.text(trunc(r0.Proyecto||'',55),M+18,y);
+  y+=5.5;
+  doc.setFont('helvetica','bold');doc.text('Lugar:',M,y);
+  doc.setFont('helvetica','normal');doc.text(trunc(r0.Lugar||'',55),M+18,y);
   y+=5;
   doc.setDrawColor(139,90,60);doc.setLineWidth(0.5);doc.line(M,y,M+CW,y);
   y+=5;
