@@ -45,10 +45,26 @@ select:focus,input:focus{outline:none;border-color:var(--ac)}
 .fbtn:active{transform:scale(.95)}
 .fbtn.ent{background:var(--ok)}.fbtn.ial{background:var(--wn)}.fbtn.fal{background:var(--bl)}.fbtn.sal{background:var(--er)}
 .ovx{overflow-x:auto}
-.wtbl{width:100%;border-collapse:collapse;font-size:12px}
-.wtbl th{background:var(--pr);color:#fff;padding:7px 6px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;white-space:nowrap}
-.wtbl td{padding:6px;border-bottom:1px solid var(--bd);vertical-align:middle}
-.wtbl tr.ausente td{background:#fff5f5}.wtbl tr.permiso td{background:#fffde7}.wtbl tr.enfer td{background:#f3e5f5}
+/* Worker cards (mobile-friendly, replaces old table) */
+.wcard{background:#fff;border:1.5px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:10px}
+.wcard.ausente{background:#fff5f5;border-color:#f5c6cb}
+.wcard.permiso{background:#fffde7;border-color:#f0e08a}
+.wcard.enfer{background:#f3e5f5;border-color:#d9b8e3}
+.wcard-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.wcard-top input[type=checkbox]{width:20px;height:20px;flex-shrink:0}
+.wcard-name{flex:1;min-width:0}
+.wcard-name b{font-size:14.5px}
+.wcard-meta{font-size:11px;color:var(--txl);margin-top:1px}
+.wcard-est{margin-bottom:10px}
+.wcard-est select.est-sel{width:100%;padding:7px 9px;font-size:13px;border-radius:6px}
+.wtimes-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wtime-field{background:var(--bg);border-radius:7px;padding:6px 8px}
+.wtime-field label{display:block;font-size:9.5px;font-weight:700;color:var(--txl);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px}
+.wtime-field input[type=time]{width:100%;padding:6px 5px;font-size:14px;border:1.3px solid var(--bd);border-radius:5px;background:#fff}
+.wlive-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.wlive-badges{display:flex;gap:5px;flex-wrap:wrap}
+.wlive-badges .tbg{font-size:10.5px}
+.wnoaplica{color:var(--txl);font-size:12px;font-style:italic}
 .tbg{display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700}
 .tbg.ok{background:#e8f5e9;color:#2e7d32}.tbg.wn{background:#fff8e1;color:#f57f17}
 .tbg.bl{background:#e3f2fd;color:#1565c0}.tbg.er{background:#fce4ec;color:#b71c1c}
@@ -233,15 +249,8 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--pr);cursor:pointe
           <button class="fbtn sal" onclick="marcarGrupal('salida')">&#128682; SALIDA</button>
         </div>
       </div>
-      <div class="ovx">
-        <table class="wtbl">
-          <thead><tr>
-            <th id="th-chk">&#10003;</th><th>Trabajador</th><th>Cargo</th><th>Tipo</th><th>Estado</th><th id="th-times">Horario</th>
-          </tr></thead>
-          <tbody id="tbody-workers">
-            <tr><td colspan="6" class="empty-msg">Selecciona un supervisor</td></tr>
-          </tbody>
-        </table>
+      <div id="tbody-workers">
+        <div class="empty-msg">Selecciona un supervisor</div>
       </div>
     </div>
 
@@ -501,39 +510,48 @@ function subirFoto(tipo,cb){
 
 // RENDER WORKERS
 function renderWorkers(){
-  var tbody=document.getElementById('tbody-workers');
+  var cont=document.getElementById('tbody-workers');
   var modoManual=state.modoManual;
   var horaEsp=document.getElementById('hora-esperada').value;
-  if(state.workers.length===0){tbody.innerHTML='<tr><td colspan="6" class="empty-msg">Sin personal. Usa "Agregar".</td></tr>';actualizarResumen();return;}
-  tbody.innerHTML='';
+  if(state.workers.length===0){cont.innerHTML='<div class="empty-msg">Sin personal. Usa "Agregar".</div>';actualizarResumen();return;}
+  cont.innerHTML='';
   state.workers.forEach(function(w,i){
     var es=w.estado||'Presente';
     var rowClass=es==='Ausente'?'ausente':es==='Permiso'?'permiso':es==='Enfermedad'?'enfer':'';
     var tarde=(horaEsp&&w.entrada&&w.entrada>horaEsp&&es==='Presente');
-    var tr=document.createElement('tr');
-    if(rowClass)tr.className=rowClass;
+    var card=document.createElement('div');
+    card.className='wcard'+(rowClass?' '+rowClass:'');
     var estSel='<select class="est-sel" onchange="setEstado('+i+',this.value)">'+['Presente','Ausente','Permiso','Enfermedad'].map(function(e){return'<option value="'+e+'"'+(es===e?' selected':'')+'>'+e+'</option>';}).join('')+'</select>';
-    var nameHtml='<b>'+w.nombre+'</b>'+(tarde?'<span class="tarde-tag">TARDE</span>':'');
-    if(modoManual){
-      var timesHtml=es!=='Presente'?'<span style="color:var(--txl);font-size:11px">No aplica</span>':
-        '<input type="time" class="mini" value="'+w.entrada+'" onchange="setTime('+i+',\'entrada\',this.value)" title="Entrada"> '+
-        '<input type="time" class="mini" value="'+w.iniAlm+'" onchange="setTime('+i+',\'iniAlm\',this.value)" title="Ini.Alm"> '+
-        '<input type="time" class="mini" value="'+w.finAlm+'" onchange="setTime('+i+',\'finAlm\',this.value)" title="Fin.Alm"> '+
-        '<input type="time" class="mini" value="'+w.salida+'" onchange="setTime('+i+',\'salida\',this.value)" title="Salida">';
-      tr.innerHTML='<td><input type="checkbox" '+(w.checked?'checked':'')+' onchange="toggleWorker('+i+',this.checked)"></td>'+
-        '<td>'+nameHtml+'</td><td>'+w.cargo+'</td>'+
-        '<td><span class="tbg '+(w.tipo==='Planta'?'bl':'no')+'">'+w.tipo+'</span></td>'+
-        '<td>'+estSel+'</td><td style="min-width:350px">'+timesHtml+'</td>';
-    }else{
-      var horasHtml=es!=='Presente'?'<span style="color:var(--txl);font-size:11px">No aplica</span>':
-        renderTB(w.entrada)+' '+renderTB(w.iniAlm)+' '+renderTB(w.finAlm)+' '+renderTB(w.salida)+
-        ' <button class="btn btn-out btn-sm" onclick="abrirEditInd('+i+')">&#9998;</button>';
-      tr.innerHTML='<td><input type="checkbox" '+(w.checked?'checked':'')+' onchange="toggleWorker('+i+',this.checked)"></td>'+
-        '<td>'+nameHtml+'</td><td>'+w.cargo+'</td>'+
-        '<td><span class="tbg '+(w.tipo==='Planta'?'bl':'no')+'">'+w.tipo+'</span></td>'+
-        '<td>'+estSel+'</td><td style="min-width:280px">'+horasHtml+'</td>';
+
+    var bodyHtml='';
+    if(es!=='Presente'){
+      bodyHtml='<div class="wnoaplica">No aplica horario (estado: '+es+')</div>';
+    } else if(modoManual){
+      bodyHtml='<div class="wtimes-grid">'+
+        '<div class="wtime-field"><label>&#128994; Entrada</label><input type="time" value="'+w.entrada+'" onchange="setTime('+i+',\'entrada\',this.value)"></div>'+
+        '<div class="wtime-field"><label>&#127869; Sale almuerzo</label><input type="time" value="'+w.iniAlm+'" onchange="setTime('+i+',\'iniAlm\',this.value)"></div>'+
+        '<div class="wtime-field"><label>&#127869; Vuelve almuerzo</label><input type="time" value="'+w.finAlm+'" onchange="setTime('+i+',\'finAlm\',this.value)"></div>'+
+        '<div class="wtime-field"><label>&#128308; Salida</label><input type="time" value="'+w.salida+'" onchange="setTime('+i+',\'salida\',this.value)"></div>'+
+        '</div>';
+    } else {
+      bodyHtml='<div class="wlive-row"><div class="wlive-badges">'+
+        '<span class="tbg no">Ent: '+(w.entrada||'--:--')+'</span>'+
+        '<span class="tbg no">S.Alm: '+(w.iniAlm||'--:--')+'</span>'+
+        '<span class="tbg no">V.Alm: '+(w.finAlm||'--:--')+'</span>'+
+        '<span class="tbg no">Sal: '+(w.salida||'--:--')+'</span>'+
+        '</div><button class="btn btn-out btn-sm" onclick="abrirEditInd('+i+')">&#9998; Editar</button></div>';
     }
-    tbody.appendChild(tr);
+
+    card.innerHTML=
+      '<div class="wcard-top">'+
+        '<input type="checkbox" '+(w.checked?'checked':'')+' onchange="toggleWorker('+i+',this.checked)">'+
+        '<div class="wcard-name"><b>'+w.nombre+'</b>'+(tarde?'<span class="tarde-tag">TARDE</span>':'')+
+          '<div class="wcard-meta">'+w.cargo+' &middot; <span class="tbg '+(w.tipo==='Planta'?'bl':'no')+'" style="font-size:10px">'+w.tipo+'</span></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="wcard-est">'+estSel+'</div>'+
+      bodyHtml;
+    cont.appendChild(card);
   });
   actualizarResumen();
 }
