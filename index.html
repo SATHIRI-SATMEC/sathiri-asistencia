@@ -65,6 +65,9 @@ select:focus,input:focus{outline:none;border-color:var(--ac)}
 .wlive-badges{display:flex;gap:5px;flex-wrap:wrap}
 .wlive-badges .tbg{font-size:10.5px}
 .wnoaplica{color:var(--txl);font-size:12px;font-style:italic}
+.masivo-box{background:#FFF8F0;border:1.5px dashed var(--ac2);border-radius:10px;padding:12px;margin-bottom:14px}
+.masivo-titulo{font-size:12.5px;font-weight:700;color:var(--pr);margin-bottom:8px}
+.masivo-nota{font-size:10.5px;color:var(--txl);margin-top:6px;text-align:center}
 .tbg{display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700}
 .tbg.ok{background:#e8f5e9;color:#2e7d32}.tbg.wn{background:#fff8e1;color:#f57f17}
 .tbg.bl{background:#e3f2fd;color:#1565c0}.tbg.er{background:#fce4ec;color:#b71c1c}
@@ -237,11 +240,13 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--pr);cursor:pointe
         <div class="res-card pu"><div class="res-num" id="r-permisos">0</div><div class="res-lbl">Permisos</div></div>
         <div class="res-card wn"><div class="res-num" id="r-pendientes">0</div><div class="res-lbl">Sin salida</div></div>
       </div>
+      <div class="selall-row">
+        <input type="checkbox" id="chk-all" onchange="toggleAll(this.checked)">
+        <label for="chk-all" style="text-transform:none">Seleccionar todos</label>
+      </div>
+
+      <!-- Modo LIVE: botones de hora actual -->
       <div id="bloque-live" style="display:none">
-        <div class="selall-row">
-          <input type="checkbox" id="chk-all" onchange="toggleAll(this.checked)">
-          <label for="chk-all" style="text-transform:none">Seleccionar todos</label>
-        </div>
         <div class="fbtns">
           <button class="fbtn ent" onclick="marcarGrupal('entrada')">&#9200; ENTRADA</button>
           <button class="fbtn ial" onclick="marcarGrupal('iniAlm')">&#9749; INI.ALM</button>
@@ -249,6 +254,22 @@ input[type=checkbox]{width:15px;height:15px;accent-color:var(--pr);cursor:pointe
           <button class="fbtn sal" onclick="marcarGrupal('salida')">&#128682; SALIDA</button>
         </div>
       </div>
+
+      <!-- Modo MANUAL: aplicar mismo horario a seleccionados -->
+      <div id="bloque-manual-masivo" style="display:block">
+        <div class="masivo-box">
+          <div class="masivo-titulo">&#9200; Aplicar mismo horario a los seleccionados</div>
+          <div class="wtimes-grid">
+            <div class="wtime-field"><label>&#128994; Entrada</label><input type="time" id="masivo-entrada"></div>
+            <div class="wtime-field"><label>&#127869; Sale almuerzo</label><input type="time" id="masivo-iniAlm"></div>
+            <div class="wtime-field"><label>&#127869; Vuelve almuerzo</label><input type="time" id="masivo-finAlm"></div>
+            <div class="wtime-field"><label>&#128308; Salida</label><input type="time" id="masivo-salida"></div>
+          </div>
+          <button class="btn btn-pr btn-w" style="margin-top:8px" onclick="aplicarHorarioMasivo()">Aplicar a seleccionados</button>
+          <div class="masivo-nota">Deja en blanco el campo que no quieras aplicar. Selecciona los trabajadores arriba antes de aplicar.</div>
+        </div>
+      </div>
+
       <div id="tbody-workers">
         <div class="empty-msg">Selecciona un supervisor</div>
       </div>
@@ -571,10 +592,28 @@ function toggleAll(ch){state.workers.forEach(function(w){w.checked=ch;});renderW
 function toggleWorker(i,ch){state.workers[i].checked=ch;}
 function onModoChange(){
   var ch=document.getElementById('tgl-modo').checked;state.modoManual=!ch;
-  var lbl=document.getElementById('modo-label'),desc=document.getElementById('modo-desc'),bl=document.getElementById('bloque-live');
-  if(ch){lbl.textContent='Fichaje en vivo';lbl.style.color='var(--ok)';desc.textContent='Marca la hora en el momento exacto.';bl.style.display='block';}
-  else{lbl.textContent='Llenar al final';lbl.style.color='var(--bl)';desc.textContent='Ingresa todas las horas al final del dia.';bl.style.display='none';}
+  var lbl=document.getElementById('modo-label'),desc=document.getElementById('modo-desc');
+  var blLive=document.getElementById('bloque-live'),blManual=document.getElementById('bloque-manual-masivo');
+  if(ch){lbl.textContent='Fichaje en vivo';lbl.style.color='var(--ok)';desc.textContent='Marca la hora en el momento exacto.';blLive.style.display='block';blManual.style.display='none';}
+  else{lbl.textContent='Llenar al final';lbl.style.color='var(--bl)';desc.textContent='Ingresa todas las horas al final del dia.';blLive.style.display='none';blManual.style.display='block';}
   renderWorkers();
+}
+function aplicarHorarioMasivo(){
+  var ent=document.getElementById('masivo-entrada').value;
+  var ial=document.getElementById('masivo-iniAlm').value;
+  var fal=document.getElementById('masivo-finAlm').value;
+  var sal=document.getElementById('masivo-salida').value;
+  if(!ent&&!ial&&!fal&&!sal){toast('Ingresa al menos una hora','wn');return;}
+  var sel=state.workers.filter(function(w){return w.checked&&w.estado==='Presente';});
+  if(sel.length===0){toast('Selecciona trabajadores presentes arriba','wn');return;}
+  sel.forEach(function(w){
+    if(ent)w.entrada=ent;
+    if(ial)w.iniAlm=ial;
+    if(fal)w.finAlm=fal;
+    if(sal)w.salida=sal;
+  });
+  renderWorkers();
+  toast('Horario aplicado a '+sel.length+' trabajador(es)','ok');
 }
 function marcarGrupal(campo){
   var ahora=horaActual();
