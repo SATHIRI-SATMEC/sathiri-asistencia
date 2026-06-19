@@ -55,6 +55,8 @@ select:focus,input:focus{outline:none;border-color:var(--ac)}
 .wcard-name{flex:1;min-width:0}
 .wcard-name b{font-size:14.5px}
 .wcard-meta{font-size:11px;color:var(--txl);margin-top:1px}
+.wcard-baja{background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;flex-shrink:0;padding:4px}
+.wcard-baja:active{color:var(--er)}
 .wcard-est{margin-bottom:10px}
 .wcard-est select.est-sel{width:100%;padding:7px 9px;font-size:13px;border-radius:6px}
 .wtimes-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -569,12 +571,24 @@ function renderWorkers(){
         '<div class="wcard-name"><b>'+w.nombre+'</b>'+(tarde?'<span class="tarde-tag">TARDE</span>':'')+
           '<div class="wcard-meta">'+w.cargo+' &middot; <span class="tbg '+(w.tipo==='Planta'?'bl':'no')+'" style="font-size:10px">'+w.tipo+'</span></div>'+
         '</div>'+
+        '<button class="wcard-baja" onclick="confirmarBaja('+i+')" title="Dar de baja">&#128465;</button>'+
       '</div>'+
       '<div class="wcard-est">'+estSel+'</div>'+
       bodyHtml;
     cont.appendChild(card);
   });
   actualizarResumen();
+}
+
+function confirmarBaja(i){
+  var w=state.workers[i];
+  if(!confirm('¿Dar de baja a '+w.nombre+'?\n\nYa no aparecera en tu lista diaria, pero su historial de asistencia y pagos se mantiene intacto.\n\nEsta accion solo la puede revertir Gerencia.')) return;
+  showLoader(true,'Procesando...');
+  api({action:'desactivarPersonal',id:w.id},function(err,d){
+    showLoader(false);
+    if(d&&d.ok){toast(d.msg,'ok');if(state.supervisor)onSupervisorChange();}
+    else toast(d?d.msg:'Error al dar de baja','err');
+  });
 }
 
 function renderTB(v){return v?'<span class="tbg ok">'+v+'</span>':'<span class="tbg no">--:--</span>';}
