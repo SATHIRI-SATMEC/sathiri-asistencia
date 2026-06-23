@@ -289,6 +289,7 @@ select.sel-sm{width:auto;padding:5px 8px;font-size:12px}
             <th style="background:#1a5c1a">F.R.</th>
             <th style="background:#1a5c1a">Total Ing.</th>
             <th style="background:#7a1a1a">IESS 9.45%</th>
+            <th style="background:#7a1a1a">Asume IESS</th>
             <th style="background:#7a1a1a">Multa</th>
             <th style="background:#7a1a1a">Anticipo</th>
             <th style="background:#7a1a1a">Total Eg.</th>
@@ -980,6 +981,10 @@ function renderRolPagos(){
       '<td style="background:#f0fff4"><input type="number" class="inp-n" id="rfr-'+i+'" value="'+v.fr.toFixed(2)+'" step="0.01" onchange="recalcTotalesRol('+i+')"></td>'+
       '<td style="background:#e8f5e9;font-weight:700;min-width:70px" id="rti-'+i+'">$'+v.ting.toFixed(2)+'</td>'+
       '<td style="background:#fff5f5"><input type="number" class="inp-n" id="riess-'+i+'" value="'+v.iess.toFixed(2)+'" step="0.01" onchange="recalcTotalesRol('+i+')"></td>'+
+      '<td style="background:#fff5f5;min-width:100px"><select id="rasume-'+i+'" style="font-size:11px;padding:3px 4px;width:100%;border:1px solid #ddd;border-radius:4px" onchange="recalcTotalesRol('+i+')">'+
+        '<option value="empleado">Empleado</option>'+
+        '<option value="empleador">Empleador</option>'+
+      '</select></td>'+
       '<td style="background:#fff5f5"><input type="number" class="inp-n" id="rmulta-'+i+'" value="0" step="0.01" onchange="recalcTotalesRol('+i+')"></td>'+
       '<td style="background:#fff5f5"><input type="number" class="inp-n" id="rant-'+i+'" value="0" step="0.01" onchange="recalcTotalesRol('+i+')"></td>'+
       '<td style="background:#fce4ec;font-weight:700;min-width:70px" id="rte-'+i+'">$'+v.teg.toFixed(2)+'</td>'+
@@ -1010,7 +1015,10 @@ function recalcTotalesRol(i){
   var iess=parseFloat(document.getElementById('riess-'+i).value)||0;
   var multa=parseFloat(document.getElementById('rmulta-'+i).value)||0;
   var ant=parseFloat(document.getElementById('rant-'+i).value)||0;
-  var ting=s+d13+d14+fr,teg=iess+multa+ant,ar=ting-teg;
+  var asumeIESS=document.getElementById('rasume-'+i).value;
+  // Si el empleador asume el IESS, no se descuenta al trabajador
+  var iessEgreso=asumeIESS==='empleador'?0:iess;
+  var ting=s+d13+d14+fr,teg=iessEgreso+multa+ant,ar=ting-teg;
   document.getElementById('rti-'+i).textContent='$'+ting.toFixed(2);
   document.getElementById('rte-'+i).textContent='$'+teg.toFixed(2);
   document.getElementById('rar-'+i).textContent='$'+ar.toFixed(2);
@@ -1027,8 +1035,10 @@ function actualizarTotalesRol(){
     var iess=parseFloat(document.getElementById('riess-'+i).value)||0;
     var multa=parseFloat(document.getElementById('rmulta-'+i).value)||0;
     var ant=parseFloat(document.getElementById('rant-'+i).value)||0;
-    var ting=s+d13+d14+fr,teg=iess+multa+ant;
-    ts+=s;td13+=d13;td14+=d14;tfr+=fr;tting+=ting;tiess+=iess;tmulta+=multa;tant+=ant;tteg+=teg;ttar+=(ting-teg);
+    var asumeIESS=document.getElementById('rasume-'+i).value;
+    var iessEgreso=asumeIESS==='empleador'?0:iess;
+    var ting=s+d13+d14+fr,teg=iessEgreso+multa+ant;
+    ts+=s;td13+=d13;td14+=d14;tfr+=fr;tting+=ting;tiess+=iessEgreso;tmulta+=multa;tant+=ant;tteg+=teg;ttar+=(ting-teg);
   }
   document.getElementById('tfoot-rol').innerHTML=
     '<tr style="background:#2A1407;color:#fff;font-weight:700;font-size:12px">'+
@@ -1037,12 +1047,18 @@ function actualizarTotalesRol(){
     '<td style="padding:6px">$'+td14.toFixed(2)+'</td><td style="padding:6px">$'+tfr.toFixed(2)+'</td>'+
     '<td style="padding:6px">$'+tting.toFixed(2)+'</td><td style="padding:6px">$'+tiess.toFixed(2)+'</td>'+
     '<td style="padding:6px">$'+tmulta.toFixed(2)+'</td><td style="padding:6px">$'+tant.toFixed(2)+'</td>'+
-    '<td style="padding:6px">$'+tteg.toFixed(2)+'</td><td style="padding:6px;font-size:14px">$'+ttar.toFixed(2)+'</td><td></td></tr>';
+    '<td style="padding:6px">$'+tteg.toFixed(2)+'</td><td style="padding:6px;font-size:14px">$'+ttar.toFixed(2)+'</td><td></td><td></td></tr>';
   document.getElementById('rol-total-str').textContent='Total a pagar: $'+ttar.toFixed(2);
 }
 function fmt(f){if(!f)return'';var p=f.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
 function m2(n){return parseFloat(n||0).toFixed(2);}
 function cuerpoRol(d,ini,fin){
+  var iessLabel=d.asumeIESS==='empleador'
+    ?'9.45% IESS - Asumido por Empleador'
+    :'9.45% IESS (Aporte Personal)';
+  var iessNote=d.asumeIESS==='empleador'
+    ?'<tr><td colspan="4" style="font-size:10px;color:#666;font-style:italic;padding:4px 8px">* IESS del empleado ($'+m2(d.iessRef)+') asumido por el empleador - no se descuenta del trabajador</td></tr>'
+    :'';
   return '<div class="header">'+
     '<div><div class="empresa">SATHIRI PROYECTOS INTEGRALES</div><div style="font-size:11px;color:#555">Quito - Ecuador</div></div>'+
     '<div style="text-align:right;font-size:11px">Periodo: '+fmt(ini)+' al '+fmt(fin)+'</div>'+
@@ -1056,12 +1072,13 @@ function cuerpoRol(d,ini,fin){
     '<table>'+
       '<tr><th style="width:36%">INGRESOS</th><th class="right" style="width:14%">VALOR ($)</th>'+
           '<th style="width:36%">EGRESOS</th><th class="right" style="width:14%">VALOR ($)</th></tr>'+
-      '<tr><td>Sueldo</td><td class="right">'+m2(d.s)+'</td><td>9.45% IESS (Aporte Personal)</td><td class="right">'+m2(d.iess)+'</td></tr>'+
+      '<tr><td>Sueldo</td><td class="right">'+m2(d.s)+'</td><td>'+iessLabel+'</td><td class="right">'+m2(d.iess)+'</td></tr>'+
       '<tr><td>Fondos de Reserva (8.33%)</td><td class="right">'+m2(d.fr)+'</td><td>Multa</td><td class="right">'+m2(d.multa)+'</td></tr>'+
       '<tr><td>Decimo Tercero (8.33%)</td><td class="right">'+m2(d.d13)+'</td><td>Anticipo</td><td class="right">'+m2(d.ant)+'</td></tr>'+
       '<tr><td>Decimo Cuarto</td><td class="right">'+m2(d.d14)+'</td><td></td><td></td></tr>'+
       '<tr class="total-row"><td><b>Total Ingresos</b></td><td class="right"><b>'+m2(d.ting)+'</b></td>'+
         '<td><b>Total Egresos</b></td><td class="right"><b>'+m2(d.teg)+'</b></td></tr>'+
+      iessNote+
     '</table>'+
     '<div class="total-final"><span>TOTAL A RECIBIR</span><span>$ '+m2(d.ar)+'</span></div>'+
     '<div class="firmas">'+
@@ -1083,10 +1100,14 @@ function imprimirRol(i){
   var iess=parseFloat(document.getElementById('riess-'+i).value)||0;
   var multa=parseFloat(document.getElementById('rmulta-'+i).value)||0;
   var ant=parseFloat(document.getElementById('rant-'+i).value)||0;
-  var ting=s+d13+d14+fr,teg=iess+multa+ant,ar=ting-teg;
+  var asumeIESS=document.getElementById('rasume-'+i).value;
+  var iessEgreso=asumeIESS==='empleador'?0:iess;
+  var ting=s+d13+d14+fr,teg=iessEgreso+multa+ant,ar=ting-teg;
   var ci=document.getElementById('rci-'+i).value||'_______________';
   var win=window.open('','_blank','width=720,height=960');
-  win.document.write(htmlRol({nombre:w.nombre,ci:ci,cargo:w.cargo,dias:w.dias,supervisor:w.supervisor,s:s,d13:d13,d14:d14,fr:fr,ting:ting,iess:iess,multa:multa,ant:ant,teg:teg,ar:ar},rolIni,rolFin));
+  win.document.write(htmlRol({nombre:w.nombre,ci:ci,cargo:w.cargo,dias:w.dias,supervisor:w.supervisor,
+    s:s,d13:d13,d14:d14,fr:fr,ting:ting,iess:iessEgreso,multa:multa,ant:ant,teg:teg,ar:ar,
+    asumeIESS:asumeIESS,iessRef:iess},rolIni,rolFin));
   win.document.close();setTimeout(function(){win.print();},600);
 }
 function imprimirTodosRol(){
@@ -1098,9 +1119,11 @@ function imprimirTodosRol(){
     var d14=parseFloat(document.getElementById('rd14-'+i).value)||0,fr=parseFloat(document.getElementById('rfr-'+i).value)||0;
     var iess=parseFloat(document.getElementById('riess-'+i).value)||0,multa=parseFloat(document.getElementById('rmulta-'+i).value)||0;
     var ant=parseFloat(document.getElementById('rant-'+i).value)||0;
-    var ting=s+d13+d14+fr,teg=iess+multa+ant,ar=ting-teg;
+    var asumeIESS=document.getElementById('rasume-'+i).value;
+    var iessEgreso=asumeIESS==='empleador'?0:iess;
+    var ting=s+d13+d14+fr,teg=iessEgreso+multa+ant,ar=ting-teg;
     var ci=document.getElementById('rci-'+i).value||'_______________';
-    html+='<div class="pagina">'+cuerpoRol({nombre:w.nombre,ci:ci,cargo:w.cargo,dias:w.dias,supervisor:w.supervisor,s:s,d13:d13,d14:d14,fr:fr,ting:ting,iess:iess,multa:multa,ant:ant,teg:teg,ar:ar},rolIni,rolFin)+'</div>';
+    html+='<div class="pagina">'+cuerpoRol({nombre:w.nombre,ci:ci,cargo:w.cargo,dias:w.dias,supervisor:w.supervisor,s:s,d13:d13,d14:d14,fr:fr,ting:ting,iess:iessEgreso,multa:multa,ant:ant,teg:teg,ar:ar,asumeIESS:asumeIESS,iessRef:iess},rolIni,rolFin)+'</div>';
   }
   html+='</body></html>';
   var win=window.open('','_blank','width=720,height=960');
