@@ -116,6 +116,7 @@ select.sel-sm{width:auto;padding:5px 8px;font-size:12px}
     <button class="tab" onclick="showTab('asistencia',this)">&#128203; Asistencia</button>
     <button class="tab" onclick="showTab('informes',this)">&#128196; Informes PDF</button>
     <button class="tab" onclick="showTab('nomina',this)">&#128181; Nomina</button>
+    <button class="tab" onclick="showTab('rol',this)">&#128196; Rol de Pagos</button>
     <button class="tab" onclick="showTab('pagos',this)">&#128179; Pagos</button>
   </div>
 
@@ -235,13 +236,68 @@ select.sel-sm{width:auto;padding:5px 8px;font-size:12px}
           <table class="ntbl">
             <thead><tr>
               <th>Trabajador</th><th>Cargo</th><th>Tipo</th><th>Dias</th><th>Valor/dia</th>
-              <th>H.Extra</th><th>Recargo</th><th>Monto HE</th><th>Bono</th><th>Total</th><th>Pagar</th>
+              <th>H.Extra</th><th>Recargo</th><th>Monto HE</th><th>Bono</th>
+              <th>Multa</th><th>Anticipo</th>
+              <th>Total</th><th>Pagar</th>
             </tr></thead>
             <tbody id="tbody-nomina"></tbody>
-            <tfoot><tr><td colspan="9" style="text-align:right;font-size:13px">TOTAL:</td>
-              <td id="tf-total" style="font-size:15px;color:var(--ok)">/bin/sh.00</td><td></td></tr></tfoot>
+            <tfoot><tr><td colspan="11" style="text-align:right;font-size:13px">TOTAL:</td>
+              <td id="tf-total" style="font-size:15px;color:var(--ok)">$0.00</td><td></td></tr></tfoot>
           </table>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROL DE PAGOS -->
+  <div class="sec" id="sec-rol">
+    <div class="card">
+      <div class="ctitle">&#128196; Rol de Pagos Individual</div>
+      <div class="note">Calcula automaticamente todos los beneficios de ley. Puedes editar cualquier valor antes de imprimir. Cada trabajador debe firmar su rol.</div>
+      <div class="fgrid">
+        <div class="fg"><label>Periodo inicio</label><input type="date" id="rol-ini"></div>
+        <div class="fg"><label>Periodo fin</label><input type="date" id="rol-fin"></div>
+        <div class="fg"><label>Supervisor</label><select id="rol-sup"><option value="">Todos</option></select></div>
+        <div class="fg"><label>SBU 2026 ($)</label><input type="number" id="rol-sbu" value="460" step="0.01" min="0"></div>
+        <div class="fg"><label>Valor diario base ($)</label><input type="number" id="rol-vd" value="20" step="0.01" min="0"></div>
+        <div class="fg" style="display:flex;align-items:flex-end;gap:6px">
+          <label style="display:none"></label>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:auto">
+            <input type="checkbox" id="rol-fr" checked style="width:16px;height:16px">
+            <label style="text-transform:none;font-size:12px" for="rol-fr">Incluir Fondos de Reserva</label>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+        <button class="btn btn-pr" onclick="calcularRolPagos()">&#128200; Calcular Rol de Pagos</button>
+        <button class="btn btn-ok" id="btn-rol-todos" style="display:none" onclick="imprimirTodosRol()">&#128424; Imprimir todos</button>
+      </div>
+    </div>
+
+    <div class="card" id="rol-card" style="display:none">
+      <div class="ctitle">
+        Rol de Pagos del Periodo (<span id="rol-count">0</span> trabajadores)
+        <span id="rol-total-str" style="font-size:12px;font-weight:400;color:var(--ok)"></span>
+      </div>
+      <div class="ovx">
+        <table class="ntbl" style="font-size:11px">
+          <thead><tr>
+            <th>Trabajador</th><th>C.I.</th><th>Cargo</th><th>Dias</th><th>V.Dia</th>
+            <th style="background:#1a5c1a">Sueldo</th>
+            <th style="background:#1a5c1a">D.13</th>
+            <th style="background:#1a5c1a">D.14</th>
+            <th style="background:#1a5c1a">F.R.</th>
+            <th style="background:#1a5c1a">Total Ing.</th>
+            <th style="background:#7a1a1a">IESS 9.45%</th>
+            <th style="background:#7a1a1a">Multa</th>
+            <th style="background:#7a1a1a">Anticipo</th>
+            <th style="background:#7a1a1a">Total Eg.</th>
+            <th style="background:#2A1407;font-size:12px">A RECIBIR</th>
+            <th>&#128424;</th>
+          </tr></thead>
+          <tbody id="tbody-rol"></tbody>
+          <tfoot id="tfoot-rol"></tfoot>
+        </table>
       </div>
     </div>
   </div>
@@ -368,7 +424,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var hs=yy+'-'+mm+'-'+dd;
   document.getElementById('hdr-fecha').textContent=dd+'/'+mm+'/'+yy;
   document.getElementById('dash-fecha').textContent=dd+'/'+mm+'/'+yy;
-  ['a-ini','a-fin','n-ini','n-fin','p-ini','p-fin','inf-ini','inf-fin'].forEach(function(id){document.getElementById(id).value=hs;});
+  ['a-ini','a-fin','n-ini','n-fin','p-ini','p-fin','inf-ini','inf-fin','rol-ini','rol-fin'].forEach(function(id){document.getElementById(id).value=hs;});
   document.getElementById('pg-fp').value=hs;
   cargarCatalogos();cargarDashboard();
 });
@@ -378,7 +434,7 @@ function cargarCatalogos(){
   api({action:'getProyectos'},function(err,d){if(d&&d.ok){gPros=d.data;poblarPros(d.data);}});
 }
 function poblarSups(lista){
-  ['a-sup','n-sup','p-sup','inf-sup'].forEach(function(id){
+  ['a-sup','n-sup','p-sup','inf-sup','rol-sup'].forEach(function(id){
     var s=document.getElementById(id);s.innerHTML='<option value="">Todos</option>';
     lista.forEach(function(x){s.innerHTML+='<option value="'+x.Nombre+'">'+x.Nombre+'</option>';});
   });
@@ -749,7 +805,7 @@ function procesarNomina(registros,ini,fin){
 }
 function renderNomina(lista){
   var tb=document.getElementById('tbody-nomina');
-  if(lista.length===0){tb.innerHTML='<tr><td colspan="11" class="empty-msg">Sin personal</td></tr>';return;}
+  if(lista.length===0){tb.innerHTML='<tr><td colspan="13" class="empty-msg">Sin personal</td></tr>';return;}
   tb.innerHTML='';
   lista.forEach(function(w,i){
     var tr=document.createElement('tr');
@@ -759,9 +815,11 @@ function renderNomina(lista){
       '<td><input type="number" class="inp-n" id="vd-'+i+'" value="20.00" min="0" step="0.01" onchange="actualizarFila('+i+')"></td>'+
       '<td><input type="number" class="inp-h" id="heh-'+i+'" value="0" min="0" step="0.5" onchange="actualizarFila('+i+')"></td>'+
       '<td><select class="sel-sm" id="het-'+i+'" onchange="actualizarFila('+i+')"><option value="0">0%</option><option value="0.5">+50%</option><option value="1">+100%</option></select></td>'+
-      '<td id="hem-'+i+'">/bin/sh.00</td>'+
+      '<td id="hem-'+i+'">$0.00</td>'+
       '<td><input type="number" class="inp-n" id="bono-'+i+'" value="0" min="0" step="0.01" onchange="actualizarFila('+i+')"></td>'+
-      '<td id="tot-'+i+'" style="font-weight:700;color:var(--ok)">/bin/sh.00</td>'+
+      '<td><input type="number" class="inp-n" id="multa-'+i+'" value="0" min="0" step="0.01" onchange="actualizarFila('+i+')" style="border-color:#e74c3c"></td>'+
+      '<td><input type="number" class="inp-n" id="anticipo-'+i+'" value="0" min="0" step="0.01" onchange="actualizarFila('+i+')" style="border-color:#e74c3c"></td>'+
+      '<td id="tot-'+i+'" style="font-weight:700;color:var(--ok)">$0.00</td>'+
       '<td><button class="btn btn-ok btn-sm" onclick="abrirPago('+i+')">Pagar</button></td>';
     tb.appendChild(tr);actualizarFila(i);
   });
@@ -771,10 +829,15 @@ function actualizarFila(i){
   var heH=parseFloat(document.getElementById('heh-'+i).value)||0,heT=parseFloat(document.getElementById('het-'+i).value)||0;
   var vHora=vd/8,heMonto=heH*vHora*(1+heT);
   var bono=parseFloat(document.getElementById('bono-'+i).value)||0;
-  var sub=dias*vd,total=sub+heMonto+bono;
+  var multa=parseFloat(document.getElementById('multa-'+i).value)||0;
+  var anticipo=parseFloat(document.getElementById('anticipo-'+i).value)||0;
+  var sub=dias*vd,total=sub+heMonto+bono-multa-anticipo;
   document.getElementById('hem-'+i).textContent='$'+heMonto.toFixed(2);
   document.getElementById('tot-'+i).textContent='$'+total.toFixed(2);
-  gNomina[i]._vd=vd;gNomina[i]._heH=heH;gNomina[i]._heT=heT;gNomina[i]._hem=heMonto;gNomina[i]._bono=bono;gNomina[i]._sub=sub;gNomina[i]._total=total;
+  document.getElementById('tot-'+i).style.color=total>=0?'var(--ok)':'var(--er)';
+  gNomina[i]._vd=vd;gNomina[i]._heH=heH;gNomina[i]._heT=heT;gNomina[i]._hem=heMonto;
+  gNomina[i]._bono=bono;gNomina[i]._multa=multa;gNomina[i]._anticipo=anticipo;
+  gNomina[i]._sub=sub;gNomina[i]._total=total;
   calcGranTotal();
 }
 function calcGranTotal(){var tot=gNomina.reduce(function(s,w){return s+(w._total||0);},0);document.getElementById('gran-total').textContent=tot.toFixed(2);document.getElementById('tf-total').textContent='$'+tot.toFixed(2);}
@@ -869,6 +932,181 @@ function descargarPDF(){
 }
 
 // UI
+// ============================================================
+// ROL DE PAGOS
+// ============================================================
+var gRol=[],rolIni='',rolFin='',rolSbu=460;
+function calcularRolPagos(){
+  var ini=document.getElementById('rol-ini').value,fin=document.getElementById('rol-fin').value;
+  if(!ini||!fin){toast('Selecciona el periodo','wn');return;}
+  rolIni=ini;rolFin=fin;rolSbu=parseFloat(document.getElementById('rol-sbu').value)||460;
+  var vdBase=parseFloat(document.getElementById('rol-vd').value)||20;
+  var sup=document.getElementById('rol-sup').value;
+  var p={action:'getAsistencia',fechaInicio:ini,fechaFin:fin};if(sup)p.supervisor=sup;
+  showLoader(true,'Calculando rol...');
+  api(p,function(err,d){
+    showLoader(false);
+    if(!d||!d.ok){toast('Error','err');return;}
+    var mapa={};
+    d.data.forEach(function(r){
+      if(!r.Trabajador)return;
+      if(!mapa[r.Trabajador])mapa[r.Trabajador]={nombre:r.Trabajador,cargo:r.Cargo,tipo:r.Tipo,supervisor:r.Supervisor,ci:'',dias:0,vd:vdBase};
+      if((r.Estado||'Presente')==='Presente')mapa[r.Trabajador].dias++;
+    });
+    gRol=Object.values(mapa);
+    document.getElementById('rol-count').textContent=gRol.length;
+    renderRolPagos();
+    document.getElementById('rol-card').style.display='block';
+    document.getElementById('btn-rol-todos').style.display='block';
+  });
+}
+function renderRolPagos(){
+  var tb=document.getElementById('tbody-rol');
+  if(gRol.length===0){tb.innerHTML='<tr><td colspan="16" class="empty-msg">Sin personal</td></tr>';return;}
+  var conFR=document.getElementById('rol-fr').checked;
+  tb.innerHTML='';
+  gRol.forEach(function(w,i){
+    var v=calcValsRol(w,rolSbu,conFR);
+    var tr=document.createElement('tr');
+    tr.innerHTML=
+      '<td><b>'+w.nombre+'</b><br><span style="font-size:10px;color:var(--txl)">'+w.supervisor+'</span></td>'+
+      '<td><input type="text" style="width:105px;padding:4px;font-size:11px;border:1px solid #ddd;border-radius:4px" id="rci-'+i+'" value="'+w.ci+'" placeholder="0000000000" onchange="gRol['+i+'].ci=this.value"></td>'+
+      '<td style="font-size:11px">'+w.cargo+'</td>'+
+      '<td style="text-align:center;font-weight:700">'+w.dias+'</td>'+
+      '<td><input type="number" class="inp-h" id="rvd-'+i+'" value="'+w.vd.toFixed(2)+'" step="0.01" onchange="gRol['+i+'].vd=parseFloat(this.value)||0;recalcRolFila('+i+')"></td>'+
+      '<td style="background:#f0fff4"><input type="number" class="inp-n" id="rs-'+i+'" value="'+v.sueldo.toFixed(2)+'" step="0.01" onchange="recalcTotalesRol('+i+')"></td>'+
+      '<td style="background:#f0fff4"><input type="number" class="inp-n" id="rd13-'+i+'" value="'+v.d13.toFixed(2)+'" step="0.01" onchange="recalcTotalesRol('+i+')"></td>'+
+      '<td style="background:#f0fff4"><input type="number" class="inp-n" id="rd14-'+i+'" value="'+v.d14.toFixed(2)+'" step="0.01" onchange="recalcTotalesRol('+i+')"></td>'+
+      '<td style="background:#f0fff4"><input type="number" class="inp-n" id="rfr-'+i+'" value="'+v.fr.toFixed(2)+'" step="0.01" onchange="recalcTotalesRol('+i+')"></td>'+
+      '<td style="background:#e8f5e9;font-weight:700;min-width:70px" id="rti-'+i+'">$'+v.ting.toFixed(2)+'</td>'+
+      '<td style="background:#fff5f5"><input type="number" class="inp-n" id="riess-'+i+'" value="'+v.iess.toFixed(2)+'" step="0.01" onchange="recalcTotalesRol('+i+')"></td>'+
+      '<td style="background:#fff5f5"><input type="number" class="inp-n" id="rmulta-'+i+'" value="0" step="0.01" onchange="recalcTotalesRol('+i+')"></td>'+
+      '<td style="background:#fff5f5"><input type="number" class="inp-n" id="rant-'+i+'" value="0" step="0.01" onchange="recalcTotalesRol('+i+')"></td>'+
+      '<td style="background:#fce4ec;font-weight:700;min-width:70px" id="rte-'+i+'">$'+v.teg.toFixed(2)+'</td>'+
+      '<td style="font-weight:700;font-size:13px;min-width:75px" id="rar-'+i+'">$'+v.ar.toFixed(2)+'</td>'+
+      '<td><button class="btn btn-pr btn-sm" onclick="imprimirRol('+i+')">&#128424;</button></td>';
+    tb.appendChild(tr);
+  });
+  actualizarTotalesRol();
+}
+function calcValsRol(w,sbu,conFR){
+  var sueldo=w.vd*w.dias,d13=sueldo*0.0833,d14=sbu/12,fr=conFR?sueldo*0.0833:0,iess=sueldo*0.0945;
+  var ting=sueldo+d13+d14+fr,teg=iess;
+  return{sueldo:sueldo,d13:d13,d14:d14,fr:fr,iess:iess,ting:ting,teg:teg,ar:ting-teg};
+}
+function recalcRolFila(i){
+  var sueldo=gRol[i].vd*gRol[i].dias,conFR=document.getElementById('rol-fr').checked;
+  document.getElementById('rs-'+i).value=sueldo.toFixed(2);
+  document.getElementById('rd13-'+i).value=(sueldo*0.0833).toFixed(2);
+  document.getElementById('rfr-'+i).value=(conFR?sueldo*0.0833:0).toFixed(2);
+  document.getElementById('riess-'+i).value=(sueldo*0.0945).toFixed(2);
+  recalcTotalesRol(i);
+}
+function recalcTotalesRol(i){
+  var s=parseFloat(document.getElementById('rs-'+i).value)||0;
+  var d13=parseFloat(document.getElementById('rd13-'+i).value)||0;
+  var d14=parseFloat(document.getElementById('rd14-'+i).value)||0;
+  var fr=parseFloat(document.getElementById('rfr-'+i).value)||0;
+  var iess=parseFloat(document.getElementById('riess-'+i).value)||0;
+  var multa=parseFloat(document.getElementById('rmulta-'+i).value)||0;
+  var ant=parseFloat(document.getElementById('rant-'+i).value)||0;
+  var ting=s+d13+d14+fr,teg=iess+multa+ant,ar=ting-teg;
+  document.getElementById('rti-'+i).textContent='$'+ting.toFixed(2);
+  document.getElementById('rte-'+i).textContent='$'+teg.toFixed(2);
+  document.getElementById('rar-'+i).textContent='$'+ar.toFixed(2);
+  document.getElementById('rar-'+i).style.color=ar>=0?'var(--ok)':'var(--er)';
+  actualizarTotalesRol();
+}
+function actualizarTotalesRol(){
+  var n=gRol.length,ts=0,td13=0,td14=0,tfr=0,tting=0,tiess=0,tmulta=0,tant=0,tteg=0,ttar=0;
+  for(var i=0;i<n;i++){
+    var s=parseFloat(document.getElementById('rs-'+i).value)||0;
+    var d13=parseFloat(document.getElementById('rd13-'+i).value)||0;
+    var d14=parseFloat(document.getElementById('rd14-'+i).value)||0;
+    var fr=parseFloat(document.getElementById('rfr-'+i).value)||0;
+    var iess=parseFloat(document.getElementById('riess-'+i).value)||0;
+    var multa=parseFloat(document.getElementById('rmulta-'+i).value)||0;
+    var ant=parseFloat(document.getElementById('rant-'+i).value)||0;
+    var ting=s+d13+d14+fr,teg=iess+multa+ant;
+    ts+=s;td13+=d13;td14+=d14;tfr+=fr;tting+=ting;tiess+=iess;tmulta+=multa;tant+=ant;tteg+=teg;ttar+=(ting-teg);
+  }
+  document.getElementById('tfoot-rol').innerHTML=
+    '<tr style="background:#2A1407;color:#fff;font-weight:700;font-size:12px">'+
+    '<td colspan="5" style="text-align:right;padding:6px">TOTALES:</td>'+
+    '<td style="padding:6px">$'+ts.toFixed(2)+'</td><td style="padding:6px">$'+td13.toFixed(2)+'</td>'+
+    '<td style="padding:6px">$'+td14.toFixed(2)+'</td><td style="padding:6px">$'+tfr.toFixed(2)+'</td>'+
+    '<td style="padding:6px">$'+tting.toFixed(2)+'</td><td style="padding:6px">$'+tiess.toFixed(2)+'</td>'+
+    '<td style="padding:6px">$'+tmulta.toFixed(2)+'</td><td style="padding:6px">$'+tant.toFixed(2)+'</td>'+
+    '<td style="padding:6px">$'+tteg.toFixed(2)+'</td><td style="padding:6px;font-size:14px">$'+ttar.toFixed(2)+'</td><td></td></tr>';
+  document.getElementById('rol-total-str').textContent='Total a pagar: $'+ttar.toFixed(2);
+}
+function fmt(f){if(!f)return'';var p=f.split('-');return p[2]+'/'+p[1]+'/'+p[0];}
+function m2(n){return parseFloat(n||0).toFixed(2);}
+function cuerpoRol(d,ini,fin){
+  return '<div class="header">'+
+    '<div><div class="empresa">SATHIRI PROYECTOS INTEGRALES</div><div style="font-size:11px;color:#555">Quito - Ecuador</div></div>'+
+    '<div style="text-align:right;font-size:11px">Periodo: '+fmt(ini)+' al '+fmt(fin)+'</div>'+
+    '</div>'+
+    '<h2>ROL DE PAGOS INDIVIDUAL</h2>'+
+    '<div style="margin-bottom:14px;font-size:12px;line-height:2">'+
+      '<div><b>EMPLEADO:</b> '+d.nombre+'&nbsp;&nbsp;&nbsp;&nbsp;<b>C.I.:</b> '+d.ci+'</div>'+
+      '<div><b>DIAS TRABAJADOS:</b> '+d.dias+'&nbsp;&nbsp;&nbsp;&nbsp;<b>CARGO:</b> '+d.cargo+'</div>'+
+      '<div><b>SUPERVISOR:</b> '+d.supervisor+'</div>'+
+    '</div>'+
+    '<table>'+
+      '<tr><th style="width:36%">INGRESOS</th><th class="right" style="width:14%">VALOR ($)</th>'+
+          '<th style="width:36%">EGRESOS</th><th class="right" style="width:14%">VALOR ($)</th></tr>'+
+      '<tr><td>Sueldo</td><td class="right">'+m2(d.s)+'</td><td>9.45% IESS (Aporte Personal)</td><td class="right">'+m2(d.iess)+'</td></tr>'+
+      '<tr><td>Fondos de Reserva (8.33%)</td><td class="right">'+m2(d.fr)+'</td><td>Multa</td><td class="right">'+m2(d.multa)+'</td></tr>'+
+      '<tr><td>Decimo Tercero (8.33%)</td><td class="right">'+m2(d.d13)+'</td><td>Anticipo</td><td class="right">'+m2(d.ant)+'</td></tr>'+
+      '<tr><td>Decimo Cuarto</td><td class="right">'+m2(d.d14)+'</td><td></td><td></td></tr>'+
+      '<tr class="total-row"><td><b>Total Ingresos</b></td><td class="right"><b>'+m2(d.ting)+'</b></td>'+
+        '<td><b>Total Egresos</b></td><td class="right"><b>'+m2(d.teg)+'</b></td></tr>'+
+    '</table>'+
+    '<div class="total-final"><span>TOTAL A RECIBIR</span><span>$ '+m2(d.ar)+'</span></div>'+
+    '<div class="firmas">'+
+      '<div class="firma-box">FIRMA EMPLEADOR<br><br><br><b>SATHIRI PROYECTOS INTEGRALES</b></div>'+
+      '<div class="firma-box">Recibi conforme<br><br><br><b>'+d.nombre+'</b><br>C.I. '+d.ci+'</div>'+
+    '</div>';
+}
+function htmlRol(d,ini,fin){
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Rol - '+d.nombre+'</title>'+
+    '<style>body{font-family:Arial,sans-serif;font-size:12px;margin:20px;color:#000}h2{text-align:center;font-size:14px;margin:8px 0;text-transform:uppercase}.header{display:flex;justify-content:space-between;border-bottom:2px solid #2A1407;padding-bottom:10px;margin-bottom:12px}.empresa{font-weight:bold;font-size:14px;color:#2A1407}table{width:100%;border-collapse:collapse;margin-bottom:10px}th{background:#2A1407;color:#fff;padding:6px 8px;text-align:left;font-size:11px}td{padding:6px 8px;border-bottom:1px solid #ddd;font-size:12px}.right{text-align:right}.total-row{background:#f5f5f5;font-weight:bold}.total-final{background:#2A1407;color:#fff;font-weight:bold;font-size:14px;padding:10px;display:flex;justify-content:space-between}.firmas{display:flex;justify-content:space-between;margin-top:50px}.firma-box{border-top:1.5px solid #000;padding-top:8px;width:220px;text-align:center;font-size:11px}</style></head><body>'+
+    cuerpoRol(d,ini,fin)+'</body></html>';
+}
+function imprimirRol(i){
+  var w=gRol[i];
+  var s=parseFloat(document.getElementById('rs-'+i).value)||0;
+  var d13=parseFloat(document.getElementById('rd13-'+i).value)||0;
+  var d14=parseFloat(document.getElementById('rd14-'+i).value)||0;
+  var fr=parseFloat(document.getElementById('rfr-'+i).value)||0;
+  var iess=parseFloat(document.getElementById('riess-'+i).value)||0;
+  var multa=parseFloat(document.getElementById('rmulta-'+i).value)||0;
+  var ant=parseFloat(document.getElementById('rant-'+i).value)||0;
+  var ting=s+d13+d14+fr,teg=iess+multa+ant,ar=ting-teg;
+  var ci=document.getElementById('rci-'+i).value||'_______________';
+  var win=window.open('','_blank','width=720,height=960');
+  win.document.write(htmlRol({nombre:w.nombre,ci:ci,cargo:w.cargo,dias:w.dias,supervisor:w.supervisor,s:s,d13:d13,d14:d14,fr:fr,ting:ting,iess:iess,multa:multa,ant:ant,teg:teg,ar:ar},rolIni,rolFin));
+  win.document.close();setTimeout(function(){win.print();},600);
+}
+function imprimirTodosRol(){
+  var css='body{font-family:Arial,sans-serif;font-size:12px;margin:0;color:#000}.pagina{padding:20px;page-break-after:always}h2{text-align:center;font-size:14px;margin:8px 0;text-transform:uppercase}.header{display:flex;justify-content:space-between;border-bottom:2px solid #2A1407;padding-bottom:10px;margin-bottom:12px}.empresa{font-weight:bold;font-size:14px;color:#2A1407}table{width:100%;border-collapse:collapse;margin-bottom:10px}th{background:#2A1407;color:#fff;padding:6px 8px;text-align:left;font-size:11px}td{padding:6px 8px;border-bottom:1px solid #ddd;font-size:12px}.right{text-align:right}.total-row{background:#f5f5f5;font-weight:bold}.total-final{background:#2A1407;color:#fff;font-weight:bold;font-size:14px;padding:10px;display:flex;justify-content:space-between}.firmas{display:flex;justify-content:space-between;margin-top:50px}.firma-box{border-top:1.5px solid #000;padding-top:8px;width:220px;text-align:center;font-size:11px}@media print{.pagina{page-break-after:always}}';
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Roles de Pago</title><style>'+css+'</style></head><body>';
+  for(var i=0;i<gRol.length;i++){
+    var w=gRol[i];
+    var s=parseFloat(document.getElementById('rs-'+i).value)||0,d13=parseFloat(document.getElementById('rd13-'+i).value)||0;
+    var d14=parseFloat(document.getElementById('rd14-'+i).value)||0,fr=parseFloat(document.getElementById('rfr-'+i).value)||0;
+    var iess=parseFloat(document.getElementById('riess-'+i).value)||0,multa=parseFloat(document.getElementById('rmulta-'+i).value)||0;
+    var ant=parseFloat(document.getElementById('rant-'+i).value)||0;
+    var ting=s+d13+d14+fr,teg=iess+multa+ant,ar=ting-teg;
+    var ci=document.getElementById('rci-'+i).value||'_______________';
+    html+='<div class="pagina">'+cuerpoRol({nombre:w.nombre,ci:ci,cargo:w.cargo,dias:w.dias,supervisor:w.supervisor,s:s,d13:d13,d14:d14,fr:fr,ting:ting,iess:iess,multa:multa,ant:ant,teg:teg,ar:ar},rolIni,rolFin)+'</div>';
+  }
+  html+='</body></html>';
+  var win=window.open('','_blank','width=720,height=960');
+  win.document.write(html);win.document.close();setTimeout(function(){win.print();},800);
+}
+
 function showTab(id,el){document.querySelectorAll('.sec').forEach(function(s){s.classList.remove('on');});document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});document.getElementById('sec-'+id).classList.add('on');el.classList.add('on');}
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
