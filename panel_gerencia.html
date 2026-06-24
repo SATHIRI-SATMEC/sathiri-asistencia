@@ -390,8 +390,16 @@ select.sel-sm{width:auto;padding:5px 8px;font-size:12px}
     </div>
     <div class="fgrid-2">
       <div class="fg"><label>Bono ($)</label><input type="number" id="pg-bono" min="0" step="0.01" onchange="recalcPago()"></div>
-      <div class="fg"><label>TOTAL ($)</label><input type="number" id="pg-total" readonly style="background:#f5f5f5;font-size:18px;font-weight:700;color:var(--ok)"></div>
+      <div class="fg" style="opacity:.6"><label>Subtotal ($)</label><input type="number" id="pg-sub" readonly style="background:#f5f5f5"></div>
     </div>
+    <div style="background:#FFF5F5;border:1.5px solid var(--er);border-radius:8px;padding:12px;margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--er);text-transform:uppercase;margin-bottom:8px">Descuentos (se restan del total)</div>
+      <div class="fgrid-2">
+        <div class="fg"><label>Multa / Descuento ($)</label><input type="number" id="pg-multa" min="0" step="0.01" value="0" onchange="recalcPago()"></div>
+        <div class="fg"><label>Anticipo ya pagado ($)</label><input type="number" id="pg-anticipo" min="0" step="0.01" value="0" onchange="recalcPago()"></div>
+      </div>
+    </div>
+    <div class="fg"><label>TOTAL A PAGAR ($)</label><input type="number" id="pg-total" readonly style="background:#f5f5f5;font-size:18px;font-weight:700;color:var(--ok)"></div>
     <div class="fg"><label>Comprobante</label><input type="file" id="pg-comp" accept="image/*,.pdf"></div>
     <div class="mfoot">
       <button class="btn btn-ok" onclick="guardarPago()">&#128190; Guardar pago</button>
@@ -857,7 +865,10 @@ function abrirPago(i){
   document.getElementById('pg-fp').value=hs;document.getElementById('pg-ini').value=nIni;document.getElementById('pg-fin').value=nFin;
   document.getElementById('pg-dias').value=w.dias;document.getElementById('pg-vd').value=(w._vd||20).toFixed(2);
   document.getElementById('pg-heh').value=w._heH||0;document.getElementById('pg-het').value=w._heT||0;
-  document.getElementById('pg-bono').value=w._bono||0;document.getElementById('pg-comp').value='';
+  document.getElementById('pg-bono').value=w._bono||0;
+  document.getElementById('pg-multa').value=w._multa||0;
+  document.getElementById('pg-anticipo').value=w._anticipo||0;
+  document.getElementById('pg-comp').value='';
   pagoActual={indice:i};recalcPago();openModal('modal-pago');
 }
 function genIdRecibo(){var hoy=new Date();var yy=hoy.getFullYear(),mm=String(hoy.getMonth()+1).padStart(2,'0'),dd=String(hoy.getDate()).padStart(2,'0');var base='STH-'+yy+'-'+mm+'-'+dd+'-';var key='sth_rc_'+yy+mm+dd;var cnt=(parseInt(localStorage.getItem(key)||'0'))+1;localStorage.setItem(key,cnt);return base+String(cnt).padStart(2,'0');}
@@ -865,12 +876,33 @@ function recalcPago(){
   var dias=parseFloat(document.getElementById('pg-dias').value)||0,vd=parseFloat(document.getElementById('pg-vd').value)||0;
   var heH=parseFloat(document.getElementById('pg-heh').value)||0,heT=parseFloat(document.getElementById('pg-het').value)||0;
   var bono=parseFloat(document.getElementById('pg-bono').value)||0;
-  var sub=dias*vd,heMonto=heH*(vd/8)*(1+heT),total=sub+heMonto+bono;
-  document.getElementById('pg-sub').value=sub.toFixed(2);document.getElementById('pg-hem').value=heMonto.toFixed(2);document.getElementById('pg-total').value=total.toFixed(2);
+  var multa=parseFloat(document.getElementById('pg-multa').value)||0;
+  var anticipo=parseFloat(document.getElementById('pg-anticipo').value)||0;
+  var sub=dias*vd,heMonto=heH*(vd/8)*(1+heT),total=sub+heMonto+bono-multa-anticipo;
+  document.getElementById('pg-sub').value=sub.toFixed(2);
+  document.getElementById('pg-hem').value=heMonto.toFixed(2);
+  document.getElementById('pg-total').value=total.toFixed(2);
+  document.getElementById('pg-total').style.color=total>=0?'var(--ok)':'var(--er)';
 }
 function guardarPago(){
   var trab=document.getElementById('pg-trab').value,ini=document.getElementById('pg-ini').value,fin=document.getElementById('pg-fin').value;
-  var params={action:'savePago',checkDuplicate:'true',idRecibo:document.getElementById('pg-id').value,fechaPago:document.getElementById('pg-fp').value,supervisor:document.getElementById('pg-sup').value,trabajador:trab,cargo:document.getElementById('pg-cargo').value,periodoInicio:ini,periodoFin:fin,diasTrabajados:document.getElementById('pg-dias').value,valorDiario:document.getElementById('pg-vd').value,subtotal:document.getElementById('pg-sub').value,heTipo:document.getElementById('pg-het').value,heHoras:document.getElementById('pg-heh').value,heMonto:document.getElementById('pg-hem').value,bono:document.getElementById('pg-bono').value,total:document.getElementById('pg-total').value,estado:'Pagado',comprobante:''};
+  var params={action:'savePago',checkDuplicate:'true',
+    idRecibo:document.getElementById('pg-id').value,
+    fechaPago:document.getElementById('pg-fp').value,
+    supervisor:document.getElementById('pg-sup').value,
+    trabajador:trab,cargo:document.getElementById('pg-cargo').value,
+    periodoInicio:ini,periodoFin:fin,
+    diasTrabajados:document.getElementById('pg-dias').value,
+    valorDiario:document.getElementById('pg-vd').value,
+    subtotal:document.getElementById('pg-sub').value,
+    heTipo:document.getElementById('pg-het').value,
+    heHoras:document.getElementById('pg-heh').value,
+    heMonto:document.getElementById('pg-hem').value,
+    bono:document.getElementById('pg-bono').value,
+    multa:document.getElementById('pg-multa').value,
+    anticipo:document.getElementById('pg-anticipo').value,
+    total:document.getElementById('pg-total').value,
+    estado:'Pagado',comprobante:''};
   var file=document.getElementById('pg-comp').files[0];
   if(file){var reader=new FileReader();reader.onload=function(e){var b64=e.target.result.split(',')[1];showLoader(true,'Subiendo comprobante...');apiPost({action:'uploadArchivo',fileName:file.name,mimeType:file.type,data:b64},function(err,d){if(d&&d.ok)params.comprobante=d.url;enviarPago(params);});};reader.readAsDataURL(file);}
   else enviarPago(params);
@@ -910,16 +942,39 @@ function renderPagos(rows){
 }
 function limpiarP(){document.getElementById('p-sup').value='';document.getElementById('p-trab').value='';}
 function eliminarPago(id){if(!confirm('Eliminar este pago?'))return;showLoader(true,'Eliminando...');api({action:'deletePago',idRecibo:id},function(err,d){showLoader(false);if(d&&d.ok){toast('Eliminado','ok');buscarPagos();}else toast('Error','err');});}
-function verReciboPago(i){var r=gPagos[i];pagoActual=r;mostrarRecibo(r.ID_Recibo,r.Trabajador,r.Cargo,r.Supervisor,r.Periodo_Inicio,r.Periodo_Fin,r.Fecha_Pago,r.Dias_Trabajados,r.Valor_Diario,r.Subtotal,r.HE_Tipo,r.HE_Horas,r.HE_Monto,r.Bono,r.Total,r.Comprobante);openModal('modal-recibo');}
-function verRecibo(){var heT=document.getElementById('pg-het').value;mostrarRecibo(document.getElementById('pg-id').value,document.getElementById('pg-trab').value,document.getElementById('pg-cargo').value,document.getElementById('pg-sup').value,document.getElementById('pg-ini').value,document.getElementById('pg-fin').value,document.getElementById('pg-fp').value,document.getElementById('pg-dias').value,document.getElementById('pg-vd').value,document.getElementById('pg-sub').value,heT,document.getElementById('pg-heh').value,document.getElementById('pg-hem').value,document.getElementById('pg-bono').value,document.getElementById('pg-total').value,'');openModal('modal-recibo');}
-function mostrarRecibo(id,trab,cargo,sup,ini,fin,fp,dias,vd,sub,heT,heH,heM,bono,tot,comp){
+function verReciboPago(i){
+  var r=gPagos[i];pagoActual=r;
+  mostrarRecibo(r.ID_Recibo,r.Trabajador,r.Cargo,r.Supervisor,r.Periodo_Inicio,r.Periodo_Fin,r.Fecha_Pago,
+    r.Dias_Trabajados,r.Valor_Diario,r.Subtotal,r.HE_Tipo,r.HE_Horas,r.HE_Monto,r.Bono,
+    r.Multa||0,r.Anticipo||0,r.Total,r.Comprobante);
+  openModal('modal-recibo');
+}
+function verRecibo(){
+  var heT=document.getElementById('pg-het').value;
+  mostrarRecibo(
+    document.getElementById('pg-id').value,document.getElementById('pg-trab').value,
+    document.getElementById('pg-cargo').value,document.getElementById('pg-sup').value,
+    document.getElementById('pg-ini').value,document.getElementById('pg-fin').value,
+    document.getElementById('pg-fp').value,document.getElementById('pg-dias').value,
+    document.getElementById('pg-vd').value,document.getElementById('pg-sub').value,
+    heT,document.getElementById('pg-heh').value,document.getElementById('pg-hem').value,
+    document.getElementById('pg-bono').value,
+    document.getElementById('pg-multa').value,
+    document.getElementById('pg-anticipo').value,
+    document.getElementById('pg-total').value,'');
+  openModal('modal-recibo');
+}
+function mostrarRecibo(id,trab,cargo,sup,ini,fin,fp,dias,vd,sub,heT,heH,heM,bono,multa,anticipo,tot,comp){
   var heLabel=['Sin recargo (0%)','Recargo 50%','Recargo 100%'][parseFloat(heT)*2]||'--';
+  var multa2=parseFloat(multa)||0, anticipo2=parseFloat(anticipo)||0;
   var html='<div class="rec-header"><div class="rec-logo"><img src="'+LOGO_B64+'"></div><div class="rec-title"><h2>RECIBO DE PAGO</h2><p>SATHIRI Proyectos Integrales</p><p>ID: <b>'+id+'</b></p></div></div>'+
     '<div class="rec-info"><div><strong>Trabajador</strong>'+trab+'</div><div><strong>Cargo</strong>'+cargo+'</div><div><strong>Supervisor</strong>'+sup+'</div><div><strong>Fecha de pago</strong>'+fp+'</div><div><strong>Periodo inicio</strong>'+ini+'</div><div><strong>Periodo fin</strong>'+fin+'</div></div>'+
     '<table class="rec-tbl"><thead><tr><th>Concepto</th><th>Detalle</th><th class="right">Monto ($)</th></tr></thead><tbody>'+
     '<tr><td>Dias trabajados</td><td>'+dias+' dias x $'+parseFloat(vd).toFixed(2)+'</td><td class="right">$'+parseFloat(sub).toFixed(2)+'</td></tr>'+
     (parseFloat(heH)>0?'<tr><td>Horas extra</td><td>'+heH+'h - '+heLabel+'</td><td class="right">$'+parseFloat(heM).toFixed(2)+'</td></tr>':'')+
     (parseFloat(bono)>0?'<tr><td>Bono adicional</td><td></td><td class="right">$'+parseFloat(bono).toFixed(2)+'</td></tr>':'')+
+    (multa2>0?'<tr><td style="color:var(--er)">Multa / Descuento</td><td></td><td class="right" style="color:var(--er)">- $'+multa2.toFixed(2)+'</td></tr>':'')+
+    (anticipo2>0?'<tr><td style="color:var(--er)">Anticipo descontado</td><td></td><td class="right" style="color:var(--er)">- $'+anticipo2.toFixed(2)+'</td></tr>':'')+
     '</tbody></table>'+
     '<div class="rec-total"><span>TOTAL A PAGAR</span><span>$'+parseFloat(tot).toFixed(2)+'</span></div>'+
     (comp?'<div style="text-align:center;margin-bottom:12px"><a href="'+comp+'" target="_blank" class="btn btn-out btn-sm">&#128206; Ver comprobante</a></div>':'')+
